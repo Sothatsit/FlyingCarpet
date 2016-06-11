@@ -31,7 +31,7 @@ public class CuboidElement extends ModelElement {
     
     @Override
     public List<Block> placeElement(Location loc) {
-        List<Block> blocks = new ArrayList<Block>();
+        List<Block> blocks = new ArrayList<>();
         
         for (int x = from.getX(); x <= to.getX(); x++) {
             for (int y = from.getY(); y <= to.getY(); y++) {

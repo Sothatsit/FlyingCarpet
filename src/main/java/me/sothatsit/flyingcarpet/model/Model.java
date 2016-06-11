@@ -49,7 +49,7 @@ public class Model {
     }
     
     public static Model fromConfig(ConfigurationSection sec) {
-        List<ModelElement> elements = new ArrayList<ModelElement>();
+        List<ModelElement> elements = new ArrayList<>();
         
         for (String key : sec.getKeys(false)) {
             if (!sec.isConfigurationSection(key))

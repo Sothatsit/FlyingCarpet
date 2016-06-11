@@ -2,6 +2,7 @@ package me.sothatsit.flyingcarpet.message;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 
 import org.bukkit.Bukkit;
@@ -17,20 +18,20 @@ public class Message {
     
     public Message(String key) {
         this.key = key;
-        this.messages = new ArrayList<String>();
-        this.arguments = new ArrayList<Argument>();
+        this.messages = new ArrayList<>();
+        this.arguments = new ArrayList<>();
     }
     
     public Message(String key, List<String> messages) {
         this.key = key;
-        this.messages = new ArrayList<String>(messages);
-        this.arguments = new ArrayList<Argument>();
+        this.messages = new ArrayList<>(messages);
+        this.arguments = new ArrayList<>();
     }
     
     public Message(String key, String message) {
         this.key = key;
-        this.messages = new ArrayList<String>(Arrays.asList(message));
-        this.arguments = new ArrayList<Argument>();
+        this.messages = new ArrayList<>(Arrays.asList(message));
+        this.arguments = new ArrayList<>();
     }
     
     public String getKey() {
@@ -38,7 +39,7 @@ public class Message {
     }
     
     public List<String> getMessages() {
-        List<String> coloured = new ArrayList<String>();
+        List<String> coloured = new ArrayList<>();
         
         for (String message : messages) {
             for (Argument a : arguments) {
@@ -117,8 +118,8 @@ public class Message {
         broadcastPlayers(Arrays.asList(players));
     }
     
-    public void broadcastPlayers(List<Player> players) {
-        List<CommandSender> recievers = new ArrayList<CommandSender>();
+    public void broadcastPlayers(Collection<? extends Player> players) {
+        List<CommandSender> recievers = new ArrayList<>();
         
         recievers.addAll(players);
         
@@ -127,8 +128,9 @@ public class Message {
     
     public void broadcastSenders(List<CommandSender> recievers) {
         for (String message : messages) {
-            if (message == null || (messages.size() == 1 ? message.isEmpty() : false))
+            if (message == null || (messages.size() == 1 && message.isEmpty())) {
                 continue;
+            }
             
             for (Argument a : arguments) {
                 message = a.replace(message);
@@ -146,8 +148,9 @@ public class Message {
     
     public void broadcastPermission(String permission) {
         for (String message : messages) {
-            if (message == null || (messages.size() == 1 ? message.isEmpty() : false))
+            if (message == null || (messages.size() == 1 && message.isEmpty())) {
                 continue;
+            }
             
             for (Argument a : arguments) {
                 message = a.replace(message);

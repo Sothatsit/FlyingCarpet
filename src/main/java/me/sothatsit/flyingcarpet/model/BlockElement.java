@@ -25,7 +25,7 @@ public class BlockElement extends ModelElement {
     
     @Override
     public List<Block> placeElement(Location loc) {
-        List<Block> blocks = new ArrayList<Block>();
+        List<Block> blocks = new ArrayList<>();
         
         Block b = loc.clone().add(offset.getX(), offset.getY(), offset.getZ()).getBlock();
         

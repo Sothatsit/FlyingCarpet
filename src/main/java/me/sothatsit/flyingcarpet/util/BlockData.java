@@ -35,27 +35,24 @@ public class BlockData {
     public void setData(byte data) {
         this.data = data;
     }
-    
-    @SuppressWarnings("deprecation")
+
     public void apply(Block b) {
-        if (b.getType() == type && b.getData() == data)
+        if (b.getType() == type && b.getData() == data) {
             return;
+        }
         
         b.setTypeIdAndData(type.getId(), (data < 0 ? 0 : data), false);
     }
-    
-    @SuppressWarnings("deprecation")
+
     public static BlockData fromSection(ConfigurationSection section) {
-        if (!section.isInt("block-type") || !section.isInt("block-data"))
+        if (!section.isInt("block-type") || !section.isInt("block-data")) {
             return null;
+        }
         
         Material type = Material.getMaterial(section.getInt("block-type"));
         byte data = (byte) section.getInt("block-data");
-        
-        if (type == null)
-            return null;
-        
-        return new BlockData(type, data);
+
+        return (type == null ? null : new BlockData(type, data));
     }
     
 }

@@ -66,8 +66,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
             up.setEnabled(false);
         }
     }
-    
-    @SuppressWarnings("deprecation")
+
     public void reloadConfiguration() {
         ConfigWrapper configWrapper = new ConfigWrapper(this, "config.yml");
         configWrapper.saveDefaults();
@@ -90,7 +89,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         descendSpeed = config.getInt("descend-speed");
         
         List<String> passThrough = config.getStringList("pass-through");
-        this.passThrough = new ArrayList<BlockData>();
+        this.passThrough = new ArrayList<>();
         
         this.passThrough.add(BlockData.AIR);
         

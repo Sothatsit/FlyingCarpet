@@ -7,7 +7,9 @@ message:
    light-on: '&7Light for your flying carpet has been toggled &a&lOn'
    light-off: '&7Light for your flying carpet has been toggled &c&lOff'
    teleport-remove: '&cYour carpet has been removed because you teleported'
+   region-remove: '&cYou entered a no-carpet area so your carpet has been removed'
 error:
+   nocarpet-region: '&4Error > &cYou cannot use your carpet in this area'
    must-be-player: '&4Error > &cYou must be a player to run this command'
    no-permissions:
       carpet: '&4Error > &cYou do not have permission to use a flying carpet'

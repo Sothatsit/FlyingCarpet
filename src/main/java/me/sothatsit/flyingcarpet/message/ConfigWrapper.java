@@ -11,8 +11,8 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public class ConfigWrapper
-{
+public class ConfigWrapper {
+
     private Plugin plugin;
     private FileConfiguration config = null;
     private File configFile = null;
@@ -20,8 +20,7 @@ public class ConfigWrapper
     private boolean autoReload;
     private long lastEdit;
     
-    public ConfigWrapper(Plugin plugin, String name)
-    {
+    public ConfigWrapper(Plugin plugin, String name) {
         this.plugin = plugin;
         this.name = name;
         this.configFile = new File(plugin.getDataFolder(), name);
@@ -29,8 +28,7 @@ public class ConfigWrapper
         this.reload();
     }
     
-    public ConfigWrapper(File file)
-    {
+    public ConfigWrapper(File file) {
         this.configFile = file;
         this.reload();
     }
@@ -43,72 +41,57 @@ public class ConfigWrapper
         this.autoReload = autoReload;
     }
     
-    public void reload()
-    {
+    public void reload() {
         config = YamlConfiguration.loadConfiguration(configFile);
         lastEdit = configFile.lastModified();
         
         Reader defConfigStream = null;
-        try
-        {
+        try {
             defConfigStream = new InputStreamReader(plugin.getResource(name), "UTF8");
-        } catch (UnsupportedEncodingException e)
-        {
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         
-        if (defConfigStream != null)
-        {
+        if (defConfigStream != null) {
             YamlConfiguration defConfig = YamlConfiguration.loadConfiguration(defConfigStream);
             config.setDefaults(defConfig);
         }
     }
     
-    public FileConfiguration getConfig()
-    {
-        if (config == null)
+    public FileConfiguration getConfig() {
+        if (config == null || (autoReload && configFile.lastModified() != lastEdit)) {
             reload();
-        
-        if (autoReload && configFile.lastModified() != lastEdit)
-            reload();
+        }
         
         return config;
     }
     
-    public void save()
-    {
-        if (config == null || configFile == null)
+    public void save() {
+        if (config == null || configFile == null) {
             return;
+        }
         
-        try
-        {
+        try {
             getConfig().save(configFile);
-        } catch (IOException ex)
-        {
+        } catch (IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Could not save config " + configFile, ex);
         }
     }
     
-    public void saveDefaults()
-    {
-        if (plugin == null)
-            return;
-        
-        if (!configFile.exists())
-            plugin.saveResource(name, false);
-        
-        reload();
+    public void saveDefaults() {
+        if (plugin != null) {
+            if (!configFile.exists()) {
+                plugin.saveResource(name, false);
+            }
+
+            reload();
+        }
     }
     
     public FileConfiguration getDefaultConfig() {
-        try
-        {
-            Reader defConfigStream = new InputStreamReader(plugin.getResource(name), "UTF8");
-            
-            if (defConfigStream != null)
-                return YamlConfiguration.loadConfiguration(defConfigStream);
-        } catch (UnsupportedEncodingException e)
-        {
+        try {
+            return YamlConfiguration.loadConfiguration(new InputStreamReader(plugin.getResource(name), "UTF8"));
+        } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         }
         
