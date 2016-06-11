@@ -1,0 +1,17 @@
+message:
+   reload: '&7The flying carpet config has been reloaded'
+   carpet-on: '&7Your flying carpet has been toggled &a&lOn'
+   carpet-off: '&7Your flying carpet has been toggled &c&lOff'
+   tools-on: '&7Tools for your flying carpet has been toggled &a&lOn'
+   tools-off: '&7Tools for your flying carpet has been toggled &c&lOff'
+   light-on: '&7Light for your flying carpet has been toggled &a&lOn'
+   light-off: '&7Light for your flying carpet has been toggled &c&lOff'
+   teleport-remove: '&cYour carpet has been removed because you teleported'
+error:
+   must-be-player: '&4Error > &cYou must be a player to run this command'
+   no-permissions:
+      carpet: '&4Error > &cYou do not have permission to use a flying carpet'
+      tools: '&4Error > &cYou do not have permission to use tools on your flying carpet'
+      light: '&4Error > &cYou do not have permission to use a light on your flying carpet'
+      reload: '&4Error > &cYou do not have permission to reload the flying carpet config'
+   invalid-arguments: '&4Invalid Arguments > &c%valid%'

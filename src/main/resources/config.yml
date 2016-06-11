@@ -1,0 +1,49 @@
+pass-through:
+- 'water'
+- 'lava'
+- '31'
+- '32'
+- '106'
+- '175:2'
+- '175:3'
+descend-speed: 5
+model:
+   base:
+      glass:
+         model-type: cuboid
+         block-type: 20
+         block-data: 0
+         from:
+            x: -2
+            y: 0
+            z: -2
+         to:
+            x: 2
+            y: 0
+            z: 2
+   tools:
+      enderchest:
+         model-type: block
+         block-type: 130
+         block-data: 0
+         offset:
+            x: -2
+            y: 0
+            z: 0
+      workbench:
+         model-type: block
+         block-type: 58
+         block-data: 0
+         offset:
+            x: 2
+            y: 0
+            z: 0
+   light:
+      glowstone:
+         model-type: block
+         block-type: 89
+         block-data: 0
+         offset:
+            x: 0
+            y: 0
+            z: 0

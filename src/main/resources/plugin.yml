@@ -1,0 +1,24 @@
+main: me.sothatsit.flyingcarpet.FlyingCarpet
+author: sothatsit
+name: FlyingCarpet
+version: 1.201
+commands:
+   flyingcarpet:
+      aliases: [mc,magiccarpet]
+      description: 'Toggle your Flying Carpet'
+permissions:
+   flyingcarpet.use:
+      description: 'Permission to use the flying carpet'
+      default: op
+   flyingcarpet.tools:
+      description: 'Permission to add tools to your flying carpet'
+      default: op
+   flyingcarpet.light:
+      description: 'Permission to add a light to your flying carpet'
+      default: op
+   flyingcarpet.reload:
+      description: 'Permission to reload the flying carpet config'
+      default: op
+   flyingcarpet.teleport:
+      description: 'Allow players to keep their flying carpet on teleport'
+      default: false
