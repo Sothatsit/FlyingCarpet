@@ -1,8 +1,6 @@
 package me.sothatsit.flyingcarpet;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.UUID;
+import java.util.*;
 
 import me.sothatsit.flyingcarpet.message.ConfigWrapper;
 import me.sothatsit.flyingcarpet.message.Messages;
@@ -10,9 +8,11 @@ import me.sothatsit.flyingcarpet.model.Model;
 import me.sothatsit.flyingcarpet.util.BlockData;
 import me.sothatsit.flyingcarpet.util.LocationUtils;
 
+import me.sothatsit.flyingcarpet.util.Region;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -38,23 +38,39 @@ import org.bukkit.scheduler.BukkitRunnable;
 public class FlyingCarpet extends JavaPlugin implements Listener {
     
     private static FlyingCarpet instance;
+
     private Model base;
     private Model tools;
     private Model light;
     private List<BlockData> passThrough;
     private int descendSpeed;
     
-    private List<UPlayer> players = new ArrayList<UPlayer>();
+    private List<UPlayer> players = new ArrayList<>();
+
+    private boolean worldguardHooked = false;
+    private Set<RegionHook> regionHooks;
     
     @Override
     public void onEnable() {
         instance = this;
+
+        this.regionHooks = new HashSet<>();
         
         getCommand("flyingcarpet").setExecutor(new FlyingCarpetCommand());
         Bukkit.getPluginManager().registerEvents(this, this);
         
         Messages.setConfig(new ConfigWrapper(this, "lang.yml"));
-        
+
+        if(Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
+            try {
+                this.regionHooks.add(new WorldGuardHook());
+                this.worldguardHooked = true;
+            } catch(Exception e) {
+                getLogger().severe("Exception hooking WorldGuard");
+                e.printStackTrace();
+            }
+        }
+
         reloadConfiguration();
     }
     
@@ -67,10 +83,41 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         }
     }
 
-    public void reloadConfiguration() {
+    public boolean isCarpetAllowed(Location loc) {
+        for(RegionHook hook : this.regionHooks) {
+            if(!hook.isCarpetAllowed(loc)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    public boolean isWorldGuardHooked() {
+        return getWorldGuardHook() != null;
+    }
+
+    public RegionHook getWorldGuardHook() {
+        for(RegionHook hook : this.regionHooks) {
+            if(hook.getClass().equals(WorldGuardHook.class)) {
+                return hook;
+            }
+        }
+
+        return null;
+    }
+
+    public ConfigWrapper loadConfig() {
         ConfigWrapper configWrapper = new ConfigWrapper(this, "config.yml");
+
         configWrapper.saveDefaults();
         configWrapper.reload();
+
+        return configWrapper;
+    }
+
+    public void reloadConfiguration() {
+        ConfigWrapper configWrapper = loadConfig();
         
         FileConfiguration config = configWrapper.getConfig();
         
@@ -183,7 +230,11 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         base = Model.fromConfig(baseSec);
         tools = Model.fromConfig(toolsSec);
         light = Model.fromConfig(lightSec);
-        
+
+        for(RegionHook hook : this.regionHooks) {
+            hook.reloadConfiguration(config);
+        }
+
         configWrapper.save();
     }
     
@@ -449,7 +500,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     public static boolean canPassThrough(Material type, byte data) {
         for (BlockData pass : instance.passThrough) {
-            if (pass.getType() == type && (pass.getData() >= 0 ? pass.getData() == data : true))
+            if (pass.getType() == type && (pass.getData() < 0 || pass.getData() == data))
                 return true;
         }
         return false;

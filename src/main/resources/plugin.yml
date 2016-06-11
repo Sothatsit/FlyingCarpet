@@ -1,7 +1,8 @@
 main: me.sothatsit.flyingcarpet.FlyingCarpet
 author: sothatsit
 name: FlyingCarpet
-version: 1.201
+version: 1.3
+soft-depend: [WorldGuard]
 commands:
    flyingcarpet:
       aliases: [mc,magiccarpet]
@@ -21,4 +22,7 @@ permissions:
       default: op
    flyingcarpet.teleport:
       description: 'Allow players to keep their flying carpet on teleport'
+      default: false
+   flyingcarpet.worldguard:
+      description: 'Allow admins to add blacklisted worldguard regions'
       default: false

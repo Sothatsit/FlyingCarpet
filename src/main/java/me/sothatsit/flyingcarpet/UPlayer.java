@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import me.sothatsit.flyingcarpet.message.Message;
+import me.sothatsit.flyingcarpet.message.Messages;
 import me.sothatsit.flyingcarpet.model.Model;
 import me.sothatsit.flyingcarpet.util.BlockData;
 import me.sothatsit.flyingcarpet.util.LocationUtils;
@@ -56,7 +58,7 @@ public class UPlayer {
     public boolean isLight() {
         return light;
     }
-    
+
     public BukkitRunnable getDescendTimer() {
         return descendTimer;
     }
@@ -152,12 +154,18 @@ public class UPlayer {
             b.setData(state.getRawData());
         }
         
-        blocks = new ArrayList<BlockState>();
+        blocks = new ArrayList<>();
     }
     
     @SuppressWarnings("deprecation")
     public void createCarpet() {
-        List<Model> models = new ArrayList<Model>();
+        if(!FlyingCarpet.getInstance().isCarpetAllowed(player.getLocation())) {
+            this.setEnabled(false);
+            Messages.get("message.region-remove").send(player);
+            return;
+        }
+
+        List<Model> models = new ArrayList<>();
         
         models.add(FlyingCarpet.getBaseModel());
         
@@ -177,7 +185,7 @@ public class UPlayer {
         
         Region region = Region.combine(regions);
         
-        List<CarpetBlock> newBlocks = new ArrayList<CarpetBlock>();
+        List<CarpetBlock> newBlocks = new ArrayList<>();
         for (int x = region.getMin().getX(); x <= region.getMax().getX(); x++) {
             for (int y = region.getMin().getY(); y <= region.getMax().getY(); y++) {
                 for (int z = region.getMin().getZ(); z <= region.getMax().getZ(); z++) {
@@ -203,7 +211,7 @@ public class UPlayer {
             }
         }
         
-        List<BlockState> states = new ArrayList<BlockState>();
+        List<BlockState> states = new ArrayList<>();
         
         Iterator<BlockState> stateIterator = blocks.iterator();
         
@@ -241,8 +249,9 @@ public class UPlayer {
             
             Block b = block.loc.getBlock();
             
-            if (!FlyingCarpet.canPassThrough(b.getType(), b.getData()))
+            if (!FlyingCarpet.canPassThrough(b.getType(), b.getData())) {
                 carpetIterator.remove();
+            }
         }
         
         for (CarpetBlock block : newBlocks) {

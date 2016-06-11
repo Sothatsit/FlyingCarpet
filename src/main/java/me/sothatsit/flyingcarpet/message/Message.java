@@ -20,6 +20,8 @@ public class Message {
         this.key = key;
         this.messages = new ArrayList<>();
         this.arguments = new ArrayList<>();
+
+        this.messages.add("Unable to find the message \"" + key + "\"");
     }
     
     public Message(String key, List<String> messages) {

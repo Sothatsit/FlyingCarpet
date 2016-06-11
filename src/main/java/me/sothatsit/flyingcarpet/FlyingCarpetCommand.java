@@ -7,31 +7,103 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
+import java.util.Set;
+
 public class FlyingCarpetCommand implements CommandExecutor {
     
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+        if(args.length != 0 && args[0].equalsIgnoreCase("worldguard")) {
+            if(!sender.hasPermission("flyingcarpet.worldguard")) {
+                Messages.get("error.no-permissions.worldguard").send(sender);
+                return true;
+            }
+
+            if(!FlyingCarpet.getInstance().isWorldGuardHooked()) {
+                Messages.get("error.worldguard-not-hooked").send(sender);
+                return true;
+            }
+
+            if(args.length == 1) {
+                Messages.get("error.invalid-arguments").argument("%valid%", "/mc worldguard <add:remove:list>").send(sender);
+                return true;
+            }
+
+            if(args[1].equalsIgnoreCase("add")) {
+                if(args.length != 3) {
+                    Messages.get("error.invalid-arguments").argument("%valid%", "/mc worldguard add <region>").send(sender);
+                    return true;
+                }
+
+                FlyingCarpet.getInstance().getWorldGuardHook().addBlacklistedRegion(args[2]);
+                Messages.get("message.wg.add").argument("%region%", args[2]).send(sender);
+                return true;
+            }
+
+            if(args[1].equalsIgnoreCase("remove")) {
+                if(args.length != 3) {
+                    Messages.get("error.invalid-arguments").argument("%valid%", "/mc worldguard remove <region>").send(sender);
+                    return true;
+                }
+
+                FlyingCarpet.getInstance().getWorldGuardHook().removeBlacklistedRegion(args[2]);
+                Messages.get("message.wg.remove").argument("%region%", args[2]).send(sender);
+                return true;
+            }
+
+            if(args[1].equalsIgnoreCase("list")) {
+                if(args.length != 2) {
+                    Messages.get("error.invalid-arguments").argument("%valid%", "/mc worldguard list").send(sender);
+                    return true;
+                }
+
+                Set<String> regions = FlyingCarpet.getInstance().getWorldGuardHook().getBlacklistedRegions();
+
+                if(regions.size() == 0) {
+                    Messages.get("message.wg.list-none").send(sender);
+                    return true;
+                }
+
+                Messages.get("message.wg.list-header").send(sender);
+
+                for(String region : regions) {
+                    Messages.get("message.wg.list-line").argument("%region%", region).send(sender);
+                }
+
+                return true;
+            }
+
+            Messages.get("error.invalid-arguments").argument("%valid%", "/mc worldguard <add:remove:list>").send(sender);
+            return true;
+        }
+
         if (!(sender instanceof Player)) {
             Messages.get("error.must-be-player").send(sender);
-            return false;
+            return true;
         }
         
         Player p = (Player) sender;
         
         if (!p.hasPermission("flyingcarpet.use")) {
             Messages.get("error.no-permissions.carpet").send(sender);
-            return false;
+            return true;
         }
         
         UPlayer up = FlyingCarpet.getInstance().getUPlayer(p);
         
         if (args.length == 0) {
+            if(!up.isEnabled() && !FlyingCarpet.getInstance().isCarpetAllowed(p.getLocation())) {
+                Messages.get("error.region-blocked").send(sender);
+                return true;
+            }
+
             up.setEnabled(!up.isEnabled());
             
-            if (up.isEnabled())
+            if (up.isEnabled()) {
                 Messages.get("message.carpet-on").send(sender);
-            else
+            } else {
                 Messages.get("message.carpet-off").send(sender);
+            }
             
             return true;
         }
@@ -41,7 +113,12 @@ public class FlyingCarpetCommand implements CommandExecutor {
                 Messages.get("error.invalid-arguments").argument("%valid%", "/mc on").send(sender);
                 return true;
             }
-            
+
+            if(!FlyingCarpet.getInstance().isCarpetAllowed(p.getLocation())) {
+                Messages.get("error.region-blocked").send(sender);
+                return true;
+            }
+
             up.setEnabled(true);
             
             Messages.get("message.carpet-on").send(sender);
@@ -120,7 +197,7 @@ public class FlyingCarpetCommand implements CommandExecutor {
         if (args[0].equalsIgnoreCase("light")) {
             if (!p.hasPermission("flyingcarpet.light")) {
                 Messages.get("error.no-permissions.light").send(sender);
-                return false;
+                return true;
             }
             
             if (args.length != 1 && args.length != 2) {
@@ -157,7 +234,7 @@ public class FlyingCarpetCommand implements CommandExecutor {
             return true;
         }
         
-        Messages.get("error.invalid-arguments").argument("%valid%", "/mc [on:off:tools:light]").send(sender);
+        Messages.get("error.invalid-arguments").argument("%valid%", "/mc [on:off:tools:light" + (FlyingCarpet.getInstance().isWorldGuardHooked() && p.hasPermission("flyingcarpet.worldguard") ? ":worldguard" : "") + "]").send(sender);
         return true;
     }
 }
