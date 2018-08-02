@@ -2,129 +2,164 @@ package me.sothatsit.flyingcarpet.model;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import me.sothatsit.flyingcarpet.FlyingCarpet;
-import me.sothatsit.flyingcarpet.util.BlockData;
-import me.sothatsit.flyingcarpet.util.Region;
-import me.sothatsit.flyingcarpet.util.Vector3I;
+import me.sothatsit.flyingcarpet.util.Checks;
 
-import org.bukkit.Location;
 import org.bukkit.configuration.ConfigurationSection;
 
 public class Model {
     
-    private List<ModelElement> elements;
-    
+    private final ModelElement[] elements;
+    public final Region region;
+
     public Model(List<ModelElement> elements) {
-        this.elements = elements;
+        Checks.ensureNonNull(elements, "elements");
+
+        this.elements = elements.toArray(new ModelElement[elements.size()]);
+
+        List<Region> regions = new ArrayList<>(elements.size());
+
+        for(ModelElement element : elements) {
+            regions.add(element.region);
+        }
+
+        this.region = Region.combine(regions);
     }
     
-    public List<ModelElement> getElements() {
-        return elements;
-    }
-    
-    public Region getRegion() {
-        Region[] regions = new Region[elements.size()];
-        
-        for (int i = 0; i < regions.length; i++) {
-            regions[i] = elements.get(i).getRegion();
+    public BlockData getBlockData(BlockOffset offset) {
+        if(!region.inBounds(offset))
+            return BlockData.AIR;
+
+        for(int index = elements.length - 1; index >= 0; --index) {
+            if(elements[index].inBounds(offset))
+                return elements[index].blockData;
         }
         
-        return Region.combine(regions);
+        return BlockData.AIR;
     }
-    
-    public BlockData getBlockData(Vector3I offset) {
-        BlockData data = BlockData.AIR;
-        
-        for (ModelElement element : elements) {
-            if (element.inBounds(offset))
-                data = element.getBlockData();
+
+    public static BlockData getBlockData(List<Model> models, BlockOffset offset) {
+        for(int index = models.size() - 1; index >= 0; --index) {
+            BlockData data = models.get(index).getBlockData(offset);
+
+            if(!data.isAir())
+                return data;
         }
-        
-        return data;
+
+        return BlockData.AIR;
     }
-    
-    public static Vector3I getOffset(Location centre, Location loc) {
-        return new Vector3I(loc.getBlockX() - centre.getBlockX(), loc.getBlockY() - centre.getBlockY(), loc.getBlockZ() - centre.getBlockZ());
-    }
-    
-    public static Model fromConfig(ConfigurationSection sec) {
+
+    public static Model fromConfig(ConfigurationSection config, AtomicBoolean requiresSave) {
         List<ModelElement> elements = new ArrayList<>();
         
-        for (String key : sec.getKeys(false)) {
-            if (!sec.isConfigurationSection(key))
+        for (String key : config.getKeys(false)) {
+            if (!config.isConfigurationSection(key))
                 continue;
             
-            ConfigurationSection elementSec = sec.getConfigurationSection(key);
-            
-            if (!elementSec.isString("model-type")) {
-                FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"model-type\" not set or invalid");
+            ConfigurationSection section = config.getConfigurationSection(key);
+            ModelElement element = loadModelElement(section, requiresSave);
+
+            if(element == null)
                 continue;
-            }
-            
-            BlockData data = BlockData.fromSection(elementSec);
-            
-            if (data == null) {
-                FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > block data not set or invalid");
-                continue;
-            }
-            
-            String modelType = elementSec.getString("model-type");
-            
-            if (modelType.equalsIgnoreCase("block")) {
-                if (!elementSec.isConfigurationSection("offset")) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"offset\" not set");
-                    continue;
-                }
-                
-                Vector3I offset = Vector3I.fromConfig(elementSec.getConfigurationSection("offset"));
-                
-                if (offset == null) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"offset\" invalid");
-                    continue;
-                }
-                
-                BlockElement element = new BlockElement(data, offset);
-                
-                elements.add(element);
-                continue;
-            }
-            
-            if (modelType.equalsIgnoreCase("cuboid")) {
-                if (!elementSec.isConfigurationSection("from")) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"from\" not set");
-                    continue;
-                }
-                
-                if (!elementSec.isConfigurationSection("to")) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"to\" not set");
-                    continue;
-                }
-                
-                Vector3I from = Vector3I.fromConfig(elementSec.getConfigurationSection("from"));
-                
-                if (from == null) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"from\" invalid");
-                    continue;
-                }
-                
-                Vector3I to = Vector3I.fromConfig(elementSec.getConfigurationSection("to"));
-                
-                if (to == null) {
-                    FlyingCarpet.getInstance().getLogger().warning("Invalid model element for model \"" + sec.getName() + "\" > \"to\" invalid");
-                    continue;
-                }
-                
-                CuboidElement element = new CuboidElement(data, from, to);
-                
-                elements.add(element);
-                continue;
-            }
-            
-            FlyingCarpet.getInstance().getLogger()
-                    .warning("Invalid model element for model \"" + sec.getName() + "\" > invalid model type, valid are \"block\" and \"cuboid\"");
+
+            elements.add(element);
         }
         
         return new Model(elements);
     }
+
+    private static void migrateModelElement(ConfigurationSection section) {
+        String modelType = section.getString("model-type");
+
+        if(modelType.equalsIgnoreCase("block")) {
+            if(!section.isConfigurationSection("offset")) {
+                FlyingCarpet.warning("Unable to find offset while migrating " + section.getCurrentPath());
+                return;
+            }
+
+            BlockOffset offset = BlockOffset.fromConfig(section.getConfigurationSection("offset"));
+
+            if (offset == null) {
+                FlyingCarpet.warning("Invalid offset while migrating " + section.getCurrentPath());
+                return;
+            }
+
+            section.set("model-type", null);
+            section.set("offset", null);
+            section.set("at", offset.toString());
+            return;
+        }
+
+        if(modelType.equalsIgnoreCase("cuboid")) {
+            if (!section.isConfigurationSection("from")) {
+                FlyingCarpet.warning("Unable to find from while migrating " + section.getCurrentPath());
+                return;
+            }
+
+            if (!section.isConfigurationSection("to")) {
+                FlyingCarpet.warning("Unable to find to while migrating " + section.getCurrentPath());
+                return;
+            }
+
+            BlockOffset from = BlockOffset.fromConfig(section.getConfigurationSection("from"));
+            BlockOffset to = BlockOffset.fromConfig(section.getConfigurationSection("to"));
+
+            if (from == null || to == null) {
+                FlyingCarpet.warning("Invalid region while migrating " + section.getCurrentPath());
+                return;
+            }
+
+            section.set("model-type", null);
+            section.set("from", from.toString());
+            section.set("to", to.toString());
+            return;
+        }
+
+        FlyingCarpet.severe("Unknown model-type " + modelType + " while migrating " + section.getCurrentPath());
+    }
+
+    public static ModelElement loadModelElement(ConfigurationSection section, AtomicBoolean requiresSave) {
+        if(section.isSet("model-type")) {
+            migrateModelElement(section);
+            requiresSave.set(true);
+
+            FlyingCarpet.info("Migrated old model format for " + section.getCurrentPath());
+        }
+
+        BlockData data = BlockData.fromSection(section, requiresSave);
+
+        if(data == null)
+            return null;
+
+        if(section.isSet("at")) {
+            BlockOffset at = BlockOffset.fromString(section.getString("at"));
+
+            if(at == null) {
+                FlyingCarpet.severe("Unable to parse location for " + section.getCurrentPath() + ", invalid format");
+                return null;
+            }
+
+            return new ModelElement(data, new Region(at));
+        }
+
+        if(section.isSet("from") && section.isSet("to")) {
+            BlockOffset from = BlockOffset.fromString(section.getString("from"));
+            BlockOffset to = BlockOffset.fromString(section.getString("to"));
+
+            if (from == null || to == null) {
+                FlyingCarpet.severe("Unable to parse region for " + section.getCurrentPath() + ", invalid format");
+                return null;
+            }
+
+            return new ModelElement(data, new Region(from, to));
+        }
+
+        FlyingCarpet.getInstance().getLogger().warning("Invalid model element " + section.getCurrentPath()
+                                                       + ", expected to find an at location or a from and to location");
+
+        return null;
+    }
+
 }

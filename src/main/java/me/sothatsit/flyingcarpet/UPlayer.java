@@ -1,19 +1,16 @@
 package me.sothatsit.flyingcarpet;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
-import me.sothatsit.flyingcarpet.message.Message;
 import me.sothatsit.flyingcarpet.message.Messages;
 import me.sothatsit.flyingcarpet.model.Model;
-import me.sothatsit.flyingcarpet.util.BlockData;
-import me.sothatsit.flyingcarpet.util.LocationUtils;
-import me.sothatsit.flyingcarpet.util.Region;
-import me.sothatsit.flyingcarpet.util.Vector3I;
+import me.sothatsit.flyingcarpet.model.BlockData;
+import me.sothatsit.flyingcarpet.model.Region;
+import me.sothatsit.flyingcarpet.model.BlockOffset;
 
+import me.sothatsit.flyingcarpet.util.Checks;
 import org.bukkit.Location;
-import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.entity.Player;
@@ -21,12 +18,13 @@ import org.bukkit.scheduler.BukkitRunnable;
 
 public class UPlayer {
     
-    private Player player;
+    private final Player player;
+    private final Map<BlockOffset, BlockState> blocks;
+
     private Location loc;
     private boolean enabled;
     private boolean tools;
     private boolean light;
-    private List<BlockState> blocks;
     
     private BukkitRunnable descendTimer;
     
@@ -36,7 +34,7 @@ public class UPlayer {
         this.enabled = false;
         this.tools = false;
         this.light = false;
-        this.blocks = new ArrayList<BlockState>();
+        this.blocks = new HashMap<>();
     }
     
     public Player getPlayer() {
@@ -63,15 +61,16 @@ public class UPlayer {
         return descendTimer;
     }
     
-    public void cancelDescendTimer() {
-        if (descendTimer != null) {
-            descendTimer.cancel();
-            descendTimer = null;
-        }
+    public void stopDescent() {
+        if(descendTimer == null)
+            return;
+
+        descendTimer.cancel();
+        descendTimer = null;
     }
     
-    public void createDescendTimer() {
-        cancelDescendTimer();
+    public void startDescent() {
+        stopDescent();
         
         descendTimer = new BukkitRunnable() {
             @Override
@@ -84,20 +83,21 @@ public class UPlayer {
                 setLocation(player.getLocation().subtract(0, 2, 0));
             }
         };
-        
-        descendTimer.runTaskTimer(FlyingCarpet.getInstance(), FlyingCarpet.getDescendSpeed(), FlyingCarpet.getDescendSpeed());
+
+        int descendSpeed = FlyingCarpet.getMainConfig().getDescendSpeed();
+        descendTimer.runTaskTimer(FlyingCarpet.getInstance(), descendSpeed, descendSpeed);
+    }
+
+    public boolean isCarpetBlock(Location location) {
+        return isCarpetBlock(BlockOffset.fromLocation(location));
+    }
+
+    public boolean isCarpetBlock(Block block) {
+        return isCarpetBlock(BlockOffset.fromBlock(block));
     }
     
-    public boolean isCarpetBlock(Block b) {
-        return isCarpetBlock(b.getLocation());
-    }
-    
-    public boolean isCarpetBlock(Location loc) {
-        for (BlockState state : blocks) {
-            if (LocationUtils.locEqual(state.getLocation(), loc))
-                return true;
-        }
-        return false;
+    public boolean isCarpetBlock(BlockOffset location) {
+        return blocks.containsKey(location);
     }
     
     public void setEnabled(boolean enabled) {
@@ -113,14 +113,14 @@ public class UPlayer {
     }
     
     public void setLocation(Location loc) {
-        if (!enabled || LocationUtils.locEqual(this.loc, loc)) {
+        if (!enabled || BlockOffset.locEqual(this.loc, loc)) {
             this.loc = loc;
             return;
         }
-        
+
         this.loc = loc;
-        
-        this.createCarpet();
+
+        createCarpet();
     }
     
     public void setTools(boolean tools) {
@@ -144,136 +144,114 @@ public class UPlayer {
         
         this.createCarpet();
     }
-    
-    @SuppressWarnings("deprecation")
+
     public void removeCarpet() {
-        for (BlockState state : blocks) {
-            Block b = state.getBlock();
-            
-            b.setType(state.getType());
-            b.setData(state.getRawData());
+        for(BlockState state : blocks.values()) {
+            state.update(true, false);
         }
-        
-        blocks = new ArrayList<>();
+
+        blocks.clear();
     }
-    
+
+    public List<Model> getModels() {
+        List<Model> models = new ArrayList<>(3);
+
+        models.add(FlyingCarpet.getMainConfig().getBaseModel());
+
+        if(tools)
+            models.add(FlyingCarpet.getMainConfig().getToolsModel());
+        if(light)
+            models.add(FlyingCarpet.getMainConfig().getLightModel());
+
+        return models;
+    }
+
+    public Region getCarpetRegion(List<Model> models) {
+        Checks.ensureNonNull(models, "models");
+        Checks.ensureTrue(models.size() > 0, "models cannot be empty");
+
+        if(models.size() == 1)
+            return models.get(0).region;
+
+        List<Region> regions = new ArrayList<>(models.size());
+
+        for(Model model : models) {
+            regions.add(model.region);
+        }
+
+        return Region.combine(regions);
+    }
+
     @SuppressWarnings("deprecation")
     public void createCarpet() {
         if(!FlyingCarpet.getInstance().isCarpetAllowed(player.getLocation())) {
-            this.setEnabled(false);
+            setEnabled(false);
             Messages.get("message.region-remove").send(player);
             return;
         }
 
-        List<Model> models = new ArrayList<>();
-        
-        models.add(FlyingCarpet.getBaseModel());
-        
-        if (tools) {
-            models.add(FlyingCarpet.getToolsModel());
-        }
-        
-        if (light) {
-            models.add(FlyingCarpet.getLightModel());
-        }
-        
-        Region[] regions = new Region[models.size()];
-        
-        for (int i = 0; i < regions.length; i++) {
-            regions[i] = models.get(i).getRegion();
-        }
-        
-        Region region = Region.combine(regions);
-        
-        List<CarpetBlock> newBlocks = new ArrayList<>();
-        for (int x = region.getMin().getX(); x <= region.getMax().getX(); x++) {
-            for (int y = region.getMin().getY(); y <= region.getMax().getY(); y++) {
-                for (int z = region.getMin().getZ(); z <= region.getMax().getZ(); z++) {
-                    Location l = loc.clone().add(x, y, z);
-                    Vector3I offset = Model.getOffset(loc, l);
-                    
-                    BlockData data = BlockData.AIR;
-                    
-                    for (int i = 0; i < models.size(); i++) {
-                        Model m = models.get(i);
-                        
-                        BlockData d = m.getBlockData(offset);
-                        
-                        if (d.getType() != Material.AIR)
-                            data = d;
-                    }
-                    
-                    if (data.getType() == Material.AIR)
+        World world = loc.getWorld();
+        FCConfig mainConfig = FlyingCarpet.getMainConfig();
+
+        List<Model> models = getModels();
+        Region region = getCarpetRegion(models);
+
+        Map<BlockOffset, BlockData> modelBlocks = new HashMap<>();
+
+        for (int x = region.min.x; x <= region.max.x; x++) {
+            for (int y = region.min.y; y <= region.max.y; y++) {
+                for (int z = region.min.z; z <= region.max.z; z++) {
+                    BlockOffset offset = new BlockOffset(x, y, z);
+                    BlockOffset location = new BlockOffset(
+                            loc.getBlockX() + x,
+                            loc.getBlockY() + y,
+                            loc.getBlockZ() + z);
+
+                    BlockData data = Model.getBlockData(models, offset);
+
+                    if(data == BlockData.AIR)
                         continue;
-                    
-                    newBlocks.add(new CarpetBlock(data, l));
+
+                    modelBlocks.put(location, data);
                 }
             }
         }
-        
-        List<BlockState> states = new ArrayList<>();
-        
-        Iterator<BlockState> stateIterator = blocks.iterator();
-        
-        while (stateIterator.hasNext()) {
-            BlockState state = stateIterator.next();
-            
-            boolean found = false;
-            Iterator<CarpetBlock> carpetIterator = newBlocks.iterator();
-            while (carpetIterator.hasNext()) {
-                CarpetBlock block = carpetIterator.next();
-                
-                if (!LocationUtils.locEqual(state.getLocation(), block.loc))
-                    continue;
-                
-                found = true;
-                
-                carpetIterator.remove();
-                states.add(state);
-                
-                block.blockData.apply(state.getBlock());
-                
-                break;
+
+        List<BlockState> restore = new ArrayList<>();
+        Iterator<Map.Entry<BlockOffset, BlockState>> placedIterator = blocks.entrySet().iterator();
+
+        while(placedIterator.hasNext()) {
+            Map.Entry<BlockOffset, BlockState> entry = placedIterator.next();
+
+            BlockOffset location = entry.getKey();
+            BlockState state = entry.getValue();
+
+            BlockData data = modelBlocks.get(location);
+
+            if(data == null) {
+                restore.add(state);
+                placedIterator.remove();
+                continue;
             }
-            
-            if (!found) {
-                Block b = state.getBlock();
-                
-                b.setTypeIdAndData(state.getTypeId(), state.getRawData(), false);
-            }
+
+            data.apply(state.getBlock());
+            modelBlocks.remove(location);
         }
-        
-        Iterator<CarpetBlock> carpetIterator = newBlocks.iterator();
-        while (carpetIterator.hasNext()) {
-            CarpetBlock block = carpetIterator.next();
-            
-            Block b = block.loc.getBlock();
-            
-            if (!FlyingCarpet.canPassThrough(b.getType(), b.getData())) {
-                carpetIterator.remove();
-            }
+
+        for(Map.Entry<BlockOffset, BlockData> entry : modelBlocks.entrySet()) {
+            BlockOffset location = entry.getKey();
+            Block block = location.getBlock(world);
+            BlockData blockData = entry.getValue();
+
+            if(!mainConfig.canPassThrough(block))
+                continue;
+
+            blocks.put(location, block.getState());
+            blockData.apply(block);
         }
-        
-        for (CarpetBlock block : newBlocks) {
-            Block b = block.loc.getBlock();
-            
-            states.add(b.getState());
-            
-            block.blockData.apply(b);
+
+        for(BlockState state : restore) {
+            state.update(true, false);
         }
-        
-        this.blocks = states;
-    }
-    
-    private class CarpetBlock {
-        
-        public BlockData blockData;
-        public Location loc;
-        
-        public CarpetBlock(BlockData blockData, Location loc) {
-            this.blockData = blockData;
-            this.loc = loc;
-        }
-        
     }
 }

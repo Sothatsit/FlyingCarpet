@@ -1,34 +1,27 @@
 package me.sothatsit.flyingcarpet.model;
 
-import java.util.List;
+import me.sothatsit.flyingcarpet.util.Checks;
 
-import me.sothatsit.flyingcarpet.util.BlockData;
-import me.sothatsit.flyingcarpet.util.Region;
-import me.sothatsit.flyingcarpet.util.Vector3I;
-
-import org.bukkit.Location;
-import org.bukkit.block.Block;
-
-public abstract class ModelElement {
+public class ModelElement {
     
-    private BlockData blockData;
+    public final BlockData blockData;
+    public final Region region;
     
-    public ModelElement(BlockData blockData) {
+    public ModelElement(BlockData blockData, Region region) {
+        Checks.ensureNonNull(blockData, "blockData");
+        Checks.ensureNonNull(region, "region");
+
         this.blockData = blockData;
+        this.region = region;
     }
-    
-    public BlockData getBlockData() {
-        return blockData;
+
+    public boolean inBounds(BlockOffset offset) {
+        return region.inBounds(offset);
     }
-    
-    public void setBlockData(BlockData blockData) {
-        this.blockData = blockData;
+
+    @Override
+    public String toString() {
+        return blockData + " " + region;
     }
-    
-    public abstract List<Block> placeElement(Location loc);
-    
-    public abstract boolean inBounds(Vector3I offset);
-    
-    public abstract Region getRegion();
-    
+
 }

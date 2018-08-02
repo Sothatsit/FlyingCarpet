@@ -1,14 +1,9 @@
 package me.sothatsit.flyingcarpet.message;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 
-import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 
 public class Message {
     
@@ -32,7 +27,7 @@ public class Message {
     
     public Message(String key, String message) {
         this.key = key;
-        this.messages = new ArrayList<>(Arrays.asList(message));
+        this.messages = new ArrayList<>(Collections.singletonList(message));
         this.arguments = new ArrayList<>();
     }
     
@@ -96,7 +91,7 @@ public class Message {
     
     public void send(CommandSender sender) {
         for (String message : messages) {
-            if (message == null || (messages.size() == 1 ? message.isEmpty() : false))
+            if (message == null || (messages.size() == 1 && message.isEmpty()))
                 continue;
             
             for (Argument a : arguments) {
@@ -110,57 +105,5 @@ public class Message {
             sender.sendMessage(message);
         }
     }
-    
-    public void broadcast() {
-        broadcastPlayers(Bukkit.getOnlinePlayers());
-        send(Bukkit.getConsoleSender());
-    }
-    
-    public void broadcastPlayers(Player... players) {
-        broadcastPlayers(Arrays.asList(players));
-    }
-    
-    public void broadcastPlayers(Collection<? extends Player> players) {
-        List<CommandSender> recievers = new ArrayList<>();
-        
-        recievers.addAll(players);
-        
-        broadcastSenders(recievers);
-    }
-    
-    public void broadcastSenders(List<CommandSender> recievers) {
-        for (String message : messages) {
-            if (message == null || (messages.size() == 1 && message.isEmpty())) {
-                continue;
-            }
-            
-            for (Argument a : arguments) {
-                message = a.replace(message);
-            }
-            
-            message = ChatColor.translateAlternateColorCodes('&', message);
-            
-            for (CommandSender sender : recievers) {
-                message = new Argument("%reciever%", sender.getName()).replace(message);
-                
-                sender.sendMessage(message);
-            }
-        }
-    }
-    
-    public void broadcastPermission(String permission) {
-        for (String message : messages) {
-            if (message == null || (messages.size() == 1 && message.isEmpty())) {
-                continue;
-            }
-            
-            for (Argument a : arguments) {
-                message = a.replace(message);
-            }
-            
-            message = ChatColor.translateAlternateColorCodes('&', message);
-            
-            Bukkit.broadcast(message, permission);
-        }
-    }
+
 }

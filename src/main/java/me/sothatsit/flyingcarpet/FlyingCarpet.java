@@ -4,18 +4,12 @@ import java.util.*;
 
 import me.sothatsit.flyingcarpet.message.ConfigWrapper;
 import me.sothatsit.flyingcarpet.message.Messages;
-import me.sothatsit.flyingcarpet.model.Model;
-import me.sothatsit.flyingcarpet.util.BlockData;
-import me.sothatsit.flyingcarpet.util.LocationUtils;
 
-import me.sothatsit.flyingcarpet.util.Region;
+import me.sothatsit.flyingcarpet.model.BlockOffset;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.configuration.ConfigurationSection;
-import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -23,6 +17,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
+import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.EntityExplodeEvent;
@@ -39,39 +34,31 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     private static FlyingCarpet instance;
 
-    private Model base;
-    private Model tools;
-    private Model light;
-    private List<BlockData> passThrough;
-    private int descendSpeed;
+    private FCConfig mainConfig;
+    private WorldGuardHook worldGuardHook;
     
     private List<UPlayer> players = new ArrayList<>();
-
-    private boolean worldguardHooked = false;
-    private Set<RegionHook> regionHooks;
     
     @Override
     public void onEnable() {
         instance = this;
-
-        this.regionHooks = new HashSet<>();
         
-        getCommand("flyingcarpet").setExecutor(new FlyingCarpetCommand());
+        getCommand("flyingcarpet").setExecutor(new FCCommand());
         Bukkit.getPluginManager().registerEvents(this, this);
         
         Messages.setConfig(new ConfigWrapper(this, "lang.yml"));
 
         if(Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
             try {
-                this.regionHooks.add(new WorldGuardHook());
-                this.worldguardHooked = true;
+                worldGuardHook = new WorldGuardHook();
             } catch(Exception e) {
-                getLogger().severe("Exception hooking WorldGuard");
+                severe("Exception hooking WorldGuard");
                 e.printStackTrace();
             }
         }
 
-        reloadConfiguration();
+        mainConfig = new FCConfig();
+        mainConfig.reloadConfiguration();
     }
     
     @Override
@@ -84,179 +71,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     }
 
     public boolean isCarpetAllowed(Location loc) {
-        for(RegionHook hook : this.regionHooks) {
-            if(!hook.isCarpetAllowed(loc)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    public boolean isWorldGuardHooked() {
-        return getWorldGuardHook() != null;
-    }
-
-    public RegionHook getWorldGuardHook() {
-        for(RegionHook hook : this.regionHooks) {
-            if(hook.getClass().equals(WorldGuardHook.class)) {
-                return hook;
-            }
-        }
-
-        return null;
-    }
-
-    public ConfigWrapper loadConfig() {
-        ConfigWrapper configWrapper = new ConfigWrapper(this, "config.yml");
-
-        configWrapper.saveDefaults();
-        configWrapper.reload();
-
-        return configWrapper;
-    }
-
-    public void reloadConfiguration() {
-        ConfigWrapper configWrapper = loadConfig();
-        
-        FileConfiguration config = configWrapper.getConfig();
-        
-        if (!config.isSet("pass-through") || !config.isList("pass-through")) {
-            getLogger().warning("\"pass-through\" not set or invalid in config, resetting to default");
-            config.set("pass-through", configWrapper.getDefaultConfig().get("pass-through"));
-            configWrapper.save();
-        }
-        
-        if (!config.isSet("descend-speed") || !config.isInt("descend-speed")) {
-            getLogger().warning("\"descend-speed\" not set or invalid in config, resetting to default");
-            config.set("descend-speed", configWrapper.getDefaultConfig().get("descend-speed"));
-            configWrapper.save();
-        }
-        
-        descendSpeed = config.getInt("descend-speed");
-        
-        List<String> passThrough = config.getStringList("pass-through");
-        this.passThrough = new ArrayList<>();
-        
-        this.passThrough.add(BlockData.AIR);
-        
-        for (String str : passThrough) {
-            if (str.equalsIgnoreCase("water")) {
-                BlockData stillWater = new BlockData(Material.STATIONARY_WATER);
-                BlockData runningWater = new BlockData(Material.WATER);
-                
-                this.passThrough.add(stillWater);
-                this.passThrough.add(runningWater);
-                
-                continue;
-            }
-            
-            if (str.equalsIgnoreCase("lava")) {
-                BlockData stillLava = new BlockData(Material.STATIONARY_LAVA);
-                BlockData runningLava = new BlockData(Material.LAVA);
-                
-                this.passThrough.add(stillLava);
-                this.passThrough.add(runningLava);
-                
-                continue;
-            }
-            
-            String[] split = str.split(":");
-            
-            if (split.length == 0) {
-                getLogger().warning("Invalid pass through block \"" + str + "\"");
-                continue;
-            }
-            
-            int id;
-            Material type;
-            try {
-                id = Integer.valueOf(split[0]);
-                type = Material.getMaterial(id);
-            } catch (NumberFormatException e) {
-                getLogger().warning("Invalid pass through block \"" + str + "\", type must be an integer");
-                continue;
-            }
-            
-            if (type == null) {
-                getLogger().warning("Invalid pass through block \"" + str + "\", invalid material \"" + id + "\"");
-                continue;
-            }
-            
-            if (split.length == 1) {
-                this.passThrough.add(new BlockData(type));
-                continue;
-            }
-        }
-        
-        if (!config.isConfigurationSection("model")) {
-            getLogger().warning("\"model\" not set or invalid in config, resetting to default");
-            config.set("model", null);
-            
-            ConfigurationSection sec = config.createSection("model");
-            copySection(configWrapper, config, sec);
-        }
-        
-        ConfigurationSection model = config.getConfigurationSection("model");
-        
-        if (!model.isSet("base")) {
-            getLogger().warning("\"model.base\" not set or invalid in config, resetting to default");
-            model.set("base", null);
-            
-            ConfigurationSection sec = model.createSection("base");
-            copySection(configWrapper, config, sec);
-        }
-        
-        if (!model.isSet("tools")) {
-            getLogger().warning("\"model.tools\" not set or invalid in config, resetting to default");
-            model.set("tools", null);
-            
-            ConfigurationSection sec = model.createSection("tools");
-            copySection(configWrapper, config, sec);
-        }
-        
-        if (!model.isSet("light")) {
-            getLogger().warning("\"model.light\" not set or invalid in config, resetting to default");
-            model.set("light", null);
-            
-            ConfigurationSection sec = model.createSection("light");
-            copySection(configWrapper, config, sec);
-        }
-        
-        ConfigurationSection baseSec = model.getConfigurationSection("base");
-        ConfigurationSection toolsSec = model.getConfigurationSection("tools");
-        ConfigurationSection lightSec = model.getConfigurationSection("light");
-        
-        base = Model.fromConfig(baseSec);
-        tools = Model.fromConfig(toolsSec);
-        light = Model.fromConfig(lightSec);
-
-        for(RegionHook hook : this.regionHooks) {
-            hook.reloadConfiguration(config);
-        }
-
-        configWrapper.save();
-    }
-    
-    private static void copySection(ConfigWrapper config, FileConfiguration conf, ConfigurationSection section) {
-        boolean changed = false;
-        FileConfiguration defaults = config.getDefaultConfig();
-        
-        for (String key : defaults.getKeys(true)) {
-            if (key.startsWith(section.getCurrentPath()) && !conf.isSet(key)) {
-                if (conf.isConfigurationSection(key)) {
-                    conf.createSection(key);
-                    changed = true;
-                    continue;
-                }
-                
-                conf.set(key, defaults.get(key));
-                changed = true;
-            }
-        }
-        
-        if (changed)
-            config.save();
+        return !isWorldGuardHooked() || worldGuardHook.isCarpetAllowed(loc);
     }
     
     public UPlayer getUPlayer(Player p) {
@@ -342,6 +157,19 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
             }
         }
     }
+
+    @EventHandler
+    public void onBlockPistonRetract(BlockPistonRetractEvent e) {
+        for (Block b : e.getBlocks()) {
+            for (UPlayer up : players) {
+                if (!up.isCarpetBlock(b))
+                    continue;
+
+                e.setCancelled(true);
+                return;
+            }
+        }
+    }
     
     @EventHandler
     public void onHangingBreak(HangingBreakEvent e) {
@@ -356,7 +184,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     @EventHandler
     public void onEntityExplode(EntityExplodeEvent e) {
-        List<Block> remove = new ArrayList<Block>();
+        List<Block> remove = new ArrayList<>();
         
         for (Block b : e.blockList()) {
             for (UPlayer up : players) {
@@ -392,39 +220,39 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     @EventHandler
     public void onEntityDamage(EntityDamageEvent e) {
-        if (e.getCause() != DamageCause.SUFFOCATION) {
+        if(e.getCause() != DamageCause.SUFFOCATION)
+            return;
+
+        Entity entity = e.getEntity();
+        Location location = entity.getLocation();
+
+        for(UPlayer up : players) {
+            if(!up.isCarpetBlock(location))
+                continue;
+
+            e.setCancelled(true);
             return;
         }
         
-        Location[] locs;
-        
-        if (e.getEntity() instanceof LivingEntity) {
-            LivingEntity le = (LivingEntity) e.getEntity();
-            
-            locs = new Location[] { le.getLocation(), le.getEyeLocation() };
-        } else {
-            locs = new Location[] { e.getEntity().getLocation() };
-        }
-        
-        for (Location loc : locs) {
-            for (UPlayer up : players) {
-                if (up.isCarpetBlock(loc)) {
-                    e.setCancelled(true);
-                }
+        if(entity instanceof LivingEntity) {
+            LivingEntity livingEntity = (LivingEntity) entity;
+            Location eyeLocation = livingEntity.getEyeLocation();
+
+            for(UPlayer up : players) {
+                if(!up.isCarpetBlock(eyeLocation))
+                    continue;
+
+                e.setCancelled(true);
+                return;
             }
         }
     }
     
     @EventHandler
     public void onPlayerDamage(EntityDamageEvent e) {
-        if (e.getCause() != DamageCause.FALL) {
+        if (e.getCause() != DamageCause.FALL || !(e.getEntity() instanceof Player))
             return;
-        }
-        
-        if (!(e.getEntity() instanceof Player)) {
-            return;
-        }
-        
+
         Player p = (Player) e.getEntity();
         UPlayer up = getUPlayer(p);
         
@@ -435,13 +263,12 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerTeleport(PlayerTeleportEvent e) {
-        if (e.isCancelled() || LocationUtils.locEqual(e.getFrom(), e.getTo())) {
+        if (e.isCancelled() || BlockOffset.locEqual(e.getFrom(), e.getTo()))
             return;
-        }
         
         UPlayer up = getUPlayer(e.getPlayer());
         
-        if (LocationUtils.locColumnEqual(e.getFrom(), e.getTo()) && Math.abs(e.getFrom().getY() - e.getTo().getY()) <= 2) {
+        if (BlockOffset.locColumnEqual(e.getFrom(), e.getTo()) && Math.abs(e.getFrom().getY() - e.getTo().getY()) <= 2) {
             up.setLocation(e.getTo().clone().subtract(0, 1, 0));
             return;
         }
@@ -456,7 +283,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     
     @EventHandler(priority = EventPriority.MONITOR)
     public void onPlayerMove(PlayerMoveEvent e) {
-        if (e.isCancelled() || LocationUtils.locEqual(e.getFrom(), e.getTo()))
+        if (e.isCancelled() || BlockOffset.locEqual(e.getFrom(), e.getTo()))
             return;
         
         UPlayer up = getUPlayer(e.getPlayer());
@@ -476,42 +303,50 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     @EventHandler
     public void onPlayerToggleSneak(PlayerToggleSneakEvent e) {
         if (!e.isSneaking()) {
-            getUPlayer(e.getPlayer()).cancelDescendTimer();
+            getUPlayer(e.getPlayer()).stopDescent();
             return;
         }
         
         UPlayer up = getUPlayer(e.getPlayer());
         
         up.setLocation(e.getPlayer().getLocation().subtract(0, 2, 0));
-        up.createDescendTimer();
-    }
-    
-    public static Model getBaseModel() {
-        return instance.base;
-    }
-    
-    public static Model getToolsModel() {
-        return instance.tools;
-    }
-    
-    public static Model getLightModel() {
-        return instance.light;
-    }
-    
-    public static boolean canPassThrough(Material type, byte data) {
-        for (BlockData pass : instance.passThrough) {
-            if (pass.getType() == type && (pass.getData() < 0 || pass.getData() == data))
-                return true;
-        }
-        return false;
-    }
-    
-    public static int getDescendSpeed() {
-        return instance.descendSpeed;
+        up.startDescent();
     }
     
     public static FlyingCarpet getInstance() {
         return instance;
     }
-    
+
+    public static FCConfig getMainConfig() {
+        return instance.mainConfig;
+    }
+
+    public static boolean isWorldGuardHooked() {
+        return instance.worldGuardHook != null;
+    }
+
+    public static WorldGuardHook getWorldGuardHook() {
+        return instance.worldGuardHook;
+    }
+
+    public static void info(String info) {
+        instance.getLogger().info(info);
+    }
+
+    public static void warning(String warning) {
+        instance.getLogger().warning(warning);
+    }
+
+    public static void severe(String severe) {
+        instance.getLogger().severe(severe);
+    }
+
+    public static void sync(Runnable task) {
+        Bukkit.getScheduler().runTask(instance, task);
+    }
+
+    public static void async(Runnable task) {
+        Bukkit.getScheduler().runTaskAsynchronously(instance, task);
+    }
+
 }

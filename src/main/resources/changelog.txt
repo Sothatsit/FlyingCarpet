@@ -1,0 +1,10 @@
+1.3.3
+* Simplification of model configuration
+* Simplify models, block data, block offsets and regions and make them immutable
+
+1.3.2
+* Disallow retracting of carpet blocks with pistons
+
+1.3.1
++ Convert all uses of block ids in the config.yml to type names
+* Combine block-data into block-type using the "type[:data]" format
