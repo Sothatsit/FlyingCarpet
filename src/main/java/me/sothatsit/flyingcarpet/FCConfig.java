@@ -73,40 +73,26 @@ public class FCConfig {
         descendSpeed = config.getInt("descend-speed");
 
         passThrough = new HashSet<>();
-        BlockData.AIR.addToSet(passThrough);
+        passThrough.add(BlockData.AIR);
 
         List<String> passThroughStrings = config.getStringList("pass-through");
         List<String> passThroughReformatted = new ArrayList<>(passThroughStrings);
 
-        for (int index = 0; index < passThroughStrings.size(); ++index) {
-            String string = passThroughStrings.get(index);
-
+        for (String string : passThroughStrings) {
             if (string.equalsIgnoreCase("water")) {
-                BlockData.WATER.addToSet(passThrough);
-                BlockData.STATIONARY_WATER.addToSet(passThrough);
+                passThrough.add(BlockData.WATER);
+                passThrough.add(BlockData.STATIONARY_WATER);
                 continue;
             }
 
             if (string.equalsIgnoreCase("lava")) {
-                BlockData.LAVA.addToSet(passThrough);
-                BlockData.STATIONARY_LAVA.addToSet(passThrough);
+                passThrough.add(BlockData.LAVA);
+                passThrough.add(BlockData.STATIONARY_LAVA);
                 continue;
             }
 
             try {
-                AtomicBoolean requiresReformat = new AtomicBoolean(false);
-
-                BlockData blockData = BlockData.fromString(string, requiresReformat);
-
-                if(requiresReformat.get()) {
-                    passThroughReformatted.set(index, blockData.toString());
-                    requiresSave.set(true);
-
-                    FlyingCarpet.info("1.13 Prep - " + string + " converted to " +
-                                      blockData + " for pass-through in the config.yml");
-                }
-
-                blockData.addToSet(passThrough);
+                passThrough.add(BlockData.fromString(string));
             } catch (BlockData.BlockDataParseException e) {
                 FlyingCarpet.severe("Invalid pass through block " + string + ", " + e.getMessage());
             }

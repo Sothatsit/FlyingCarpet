@@ -1,11 +1,12 @@
 pass-through:
 - water
 - lava
-- long_grass
+- grass
+- fern
+- tall_grass
+- large_fern
 - dead_bush
 - vine
-- double_plant:2
-- double_plant:3
 descend-speed: 5
 model:
   base:

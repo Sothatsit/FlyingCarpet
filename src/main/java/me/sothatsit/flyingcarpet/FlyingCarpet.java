@@ -27,6 +27,7 @@ import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.player.PlayerToggleSneakEvent;
+import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
 
@@ -48,19 +49,12 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         
         Messages.setConfig(new ConfigWrapper(this, "lang.yml"));
 
-        if(Bukkit.getPluginManager().getPlugin("WorldGuard") != null) {
-            try {
-                worldGuardHook = new WorldGuardHook();
-            } catch(Exception e) {
-                severe("Exception hooking WorldGuard");
-                e.printStackTrace();
-            }
-        }
+        hookWorldGuard();
 
         mainConfig = new FCConfig();
         mainConfig.reloadConfiguration();
     }
-    
+
     @Override
     public void onDisable() {
         instance = null;
@@ -73,6 +67,16 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     public boolean isCarpetAllowed(Location loc) {
         return !isWorldGuardHooked() || worldGuardHook.isCarpetAllowed(loc);
     }
+
+    private void hookWorldGuard() {
+    	Plugin plugin = getServer().getPluginManager().getPlugin("WorldGuard");
+        if (plugin == null)
+            return;
+
+        worldGuardHook = new WorldGuardHook();
+        info("Hooked WorldGuard");
+    }
+
     
     public UPlayer getUPlayer(Player p) {
         for (UPlayer up : players) {
@@ -81,9 +85,7 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         }
         
         UPlayer up = new UPlayer(p);
-        
         players.add(up);
-        
         return up;
     }
     
@@ -325,10 +327,6 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
         return instance.worldGuardHook != null;
     }
 
-    public static WorldGuardHook getWorldGuardHook() {
-        return instance.worldGuardHook;
-    }
-
     public static void info(String info) {
         instance.getLogger().info(info);
     }
@@ -348,5 +346,4 @@ public class FlyingCarpet extends JavaPlugin implements Listener {
     public static void async(Runnable task) {
         Bukkit.getScheduler().runTaskAsynchronously(instance, task);
     }
-
 }

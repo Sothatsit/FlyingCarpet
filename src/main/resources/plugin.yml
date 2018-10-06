@@ -1,8 +1,9 @@
 main: me.sothatsit.flyingcarpet.FlyingCarpet
 author: sothatsit
 name: FlyingCarpet
-version: 1.3.4
-soft-depend: [WorldGuard]
+version: 1.4.0
+api-version: 1.13
+soft-depend: [WorldGuard, WorldEdit]
 commands:
    flyingcarpet:
       aliases: [mc,magiccarpet]

@@ -182,7 +182,6 @@ public class UPlayer {
         return Region.combine(regions);
     }
 
-    @SuppressWarnings("deprecation")
     public void createCarpet() {
         if(!FlyingCarpet.getInstance().isCarpetAllowed(player.getLocation())) {
             setEnabled(false);

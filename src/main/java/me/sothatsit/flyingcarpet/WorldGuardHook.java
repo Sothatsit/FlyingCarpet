@@ -1,33 +1,23 @@
 package me.sothatsit.flyingcarpet;
 
-import com.sk89q.worldguard.bukkit.WorldGuardPlugin;
+import com.sk89q.worldedit.bukkit.BukkitAdapter;
+import com.sk89q.worldguard.WorldGuard;
 import com.sk89q.worldguard.protection.managers.RegionManager;
 import com.sk89q.worldguard.protection.regions.ProtectedRegion;
-import me.sothatsit.flyingcarpet.message.ConfigWrapper;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
-import org.bukkit.configuration.ConfigurationSection;
+import com.sk89q.worldguard.protection.regions.RegionContainer;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
+import org.bukkit.Location;
 
 public class WorldGuardHook {
 
-    private WorldGuardPlugin hook = null;
-
-    public WorldGuardHook() {
-        this.hook = (WorldGuardPlugin) Bukkit.getPluginManager().getPlugin("WorldGuard");
-
-        FlyingCarpet.info("Hooked WorldGuard");
-    }
-
     public boolean isCarpetAllowed(Location loc) {
-        RegionManager manager = hook.getRegionManager(loc.getWorld());
+    	RegionContainer hook = WorldGuard.getInstance().getPlatform().getRegionContainer();
+        RegionManager manager = hook.get(BukkitAdapter.adapt(loc.getWorld()));
+        if(manager == null)
+            return true;
 
-        for(String aRegionBlacklist : FlyingCarpet.getMainConfig().getWorldguardBlacklistedRegions()) {
-            ProtectedRegion region = manager.getRegion(aRegionBlacklist);
+        for(String regionName : FlyingCarpet.getMainConfig().getWorldguardBlacklistedRegions()) {
+            ProtectedRegion region = manager.getRegion(regionName);
 
             if (region != null && region.contains(loc.getBlockX(), loc.getBlockY(), loc.getBlockZ()))
                 return false;
@@ -35,5 +25,4 @@ public class WorldGuardHook {
 
         return true;
     }
-
 }
