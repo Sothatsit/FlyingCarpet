@@ -1,7 +1,7 @@
 main: me.sothatsit.flyingcarpet.FlyingCarpet
 author: sothatsit
 name: FlyingCarpet
-version: 1.4.0
+version: 1.4.1
 api-version: 1.13
 soft-depend: [WorldGuard, WorldEdit]
 commands:

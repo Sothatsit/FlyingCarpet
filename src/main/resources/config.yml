@@ -19,7 +19,7 @@ model:
       block-type: ender_chest
       at: -2, 0, 0
     workbench:
-      block-type: workbench
+      block-type: crafting_table
       at: 2, 0, 0
   light:
     glowstone:
