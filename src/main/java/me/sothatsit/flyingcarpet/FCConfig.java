@@ -74,6 +74,7 @@ public class FCConfig {
 
         passThrough = new HashSet<>();
         passThrough.add(BlockData.AIR);
+        passThrough.add(BlockData.CAVE_AIR);
 
         List<String> passThroughStrings = config.getStringList("pass-through");
         List<String> passThroughReformatted = new ArrayList<>(passThroughStrings);

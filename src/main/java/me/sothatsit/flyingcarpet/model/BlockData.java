@@ -13,6 +13,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class BlockData {
     
     public static final BlockData AIR = new BlockData(Material.AIR);
+    public static final BlockData CAVE_AIR = new BlockData(Material.CAVE_AIR);
 
     public static final BlockData WATER = new BlockData(Material.WATER);
     @SuppressWarnings("deprecation")
@@ -35,7 +36,7 @@ public class BlockData {
     }
 
     public boolean isAir() {
-        return type == Material.AIR;
+        return type == Material.AIR || type == Material.CAVE_AIR;
     }
 
     @SuppressWarnings("deprecation")
