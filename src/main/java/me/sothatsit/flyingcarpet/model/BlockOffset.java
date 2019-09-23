@@ -7,44 +7,21 @@ import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 
 public class BlockOffset {
-    
+
     public final int x;
     public final int y;
     public final int z;
-    
+
     public BlockOffset(int x, int y, int z) {
         this.x = x;
         this.y = y;
         this.z = z;
     }
 
-    public Block getBlock(World world) {
-        return world.getBlockAt(x, y, z);
-    }
-
-    public boolean equals(Object obj) {
-        if (!(obj instanceof BlockOffset))
-            return super.equals(obj);
-        
-        BlockOffset other = (BlockOffset) obj;
-        
-        return other.x == x && other.y == y && other.z == z;
-    }
-
-    @Override
-    public int hashCode() {
-        return Integer.hashCode(x) ^ Integer.hashCode(y) ^ Integer.hashCode(z);
-    }
-
-    @Override
-    public String toString() {
-        return x + ", " + y + ", " + z;
-    }
-
     public static BlockOffset fromString(String string) {
         String[] split = string.split(",");
 
-        if(split.length != 3)
+        if (split.length != 3)
             return null;
 
         try {
@@ -53,7 +30,7 @@ public class BlockOffset {
             int z = Integer.valueOf(split[2].trim());
 
             return new BlockOffset(x, y, z);
-        } catch(NumberFormatException e) {
+        } catch (NumberFormatException e) {
             return null;
         }
     }
@@ -98,11 +75,11 @@ public class BlockOffset {
     public static BlockOffset fromConfig(ConfigurationSection section) {
         if (!section.isInt("x") || !section.isInt("y") || !section.isInt("z"))
             return null;
-        
+
         int x = section.getInt("x");
         int y = section.getInt("y");
         int z = section.getInt("z");
-        
+
         return new BlockOffset(x, y, z);
     }
 
@@ -115,6 +92,29 @@ public class BlockOffset {
     public static boolean locColumnEqual(Location loc1, Location loc2) {
         return loc1.getBlockX() == loc2.getBlockX()
                 && loc1.getBlockZ() == loc2.getBlockZ();
+    }
+
+    public Block getBlock(World world) {
+        return world.getBlockAt(x, y, z);
+    }
+
+    public boolean equals(Object obj) {
+        if (!(obj instanceof BlockOffset))
+            return super.equals(obj);
+
+        BlockOffset other = (BlockOffset) obj;
+
+        return other.x == x && other.y == y && other.z == z;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(x) ^ Integer.hashCode(y) ^ Integer.hashCode(z);
+    }
+
+    @Override
+    public String toString() {
+        return x + ", " + y + ", " + z;
     }
 
 }

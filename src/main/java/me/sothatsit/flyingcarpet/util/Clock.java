@@ -14,6 +14,10 @@ public class Clock {
         this.end = -1;
     }
 
+    public static Clock start() {
+        return new Clock();
+    }
+
     public boolean hasEnded() {
         return end >= 0;
     }
@@ -33,10 +37,6 @@ public class Clock {
     @Override
     public String toString() {
         return "(" + millisecondsFormat.format(getDuration()) + " ms)";
-    }
-
-    public static Clock start() {
-        return new Clock();
     }
 
 }
