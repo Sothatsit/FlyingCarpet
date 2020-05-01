@@ -1,9 +1,9 @@
 main: me.sothatsit.flyingcarpet.FlyingCarpet
 author: sothatsit
 name: FlyingCarpet
-version: 1.4.2
+version: 1.4.3
 api-version: 1.13
-soft-depend: [WorldGuard, WorldEdit]
+softdepend: [WorldGuard, WorldEdit, RedProtect]
 commands:
    flyingcarpet:
       aliases: [mc,magiccarpet]
@@ -18,6 +18,9 @@ permissions:
    flyingcarpet.light:
       description: 'Permission to add a light to your flying carpet'
       default: op
+   flyingcarpet.touch:
+     description: 'Permission to allow flying carpet to touch blocks and enable psychics'
+     default: op
    flyingcarpet.reload:
       description: 'Permission to reload the flying carpet config'
       default: op

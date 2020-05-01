@@ -5,7 +5,7 @@ import me.sothatsit.flyingcarpet.util.Checks;
 import java.util.List;
 
 public class Region {
-    
+
     public final BlockOffset min;
     public final BlockOffset max;
 
@@ -21,7 +21,7 @@ public class Region {
         Checks.ensureNonNull(from, "from");
         Checks.ensureNonNull(to, "to");
 
-        if(isMinMax) {
+        if (isMinMax) {
             min = from;
             max = to;
         } else {
@@ -29,27 +29,9 @@ public class Region {
             max = BlockOffset.max(from, to);
         }
     }
-    
-    public boolean inBounds(BlockOffset loc) {
-        return loc.x >= min.x && loc.x <= max.x
-                && loc.y >= min.y && loc.y <= max.y
-                && loc.z >= min.z && loc.z <= max.z;
-    }
 
     private static int abs(int val) {
         return (val < 0 ? val * -1 : val);
-    }
-
-    public int getVolume() {
-        return abs(max.x - min.x) * abs(max.y - min.y) * abs(max.z - min.z);
-    }
-
-    @Override
-    public String toString() {
-        if(min.equals(max))
-            return "at (" + min + ")";
-
-        return "from (" + min + ") to (" + max + ")";
     }
 
     public static Region combine(List<Region> regions) {
@@ -66,21 +48,21 @@ public class Region {
         int maxy = first.max.y;
         int maxz = first.max.z;
 
-        for(int index = 1; index < regions.size(); ++index) {
+        for (int index = 1; index < regions.size(); ++index) {
             Region region = regions.get(index);
 
-            if(region.min.x < minx)
+            if (region.min.x < minx)
                 minx = region.min.x;
-            if(region.min.y < miny)
+            if (region.min.y < miny)
                 miny = region.min.y;
-            if(region.min.z < minz)
+            if (region.min.z < minz)
                 minz = region.min.z;
 
-            if(region.max.x > maxx)
+            if (region.max.x > maxx)
                 maxx = region.max.x;
-            if(region.max.y > maxy)
+            if (region.max.y > maxy)
                 maxy = region.max.y;
-            if(region.max.z > maxz)
+            if (region.max.z > maxz)
                 maxz = region.max.z;
         }
 
@@ -89,5 +71,23 @@ public class Region {
 
         return new Region(min, max, true);
     }
-    
+
+    public boolean inBounds(BlockOffset loc) {
+        return loc.x >= min.x && loc.x <= max.x
+                && loc.y >= min.y && loc.y <= max.y
+                && loc.z >= min.z && loc.z <= max.z;
+    }
+
+    public int getVolume() {
+        return abs(max.x - min.x) * abs(max.y - min.y) * abs(max.z - min.z);
+    }
+
+    @Override
+    public String toString() {
+        if (min.equals(max))
+            return "at (" + min + ")";
+
+        return "from (" + min + ") to (" + max + ")";
+    }
+
 }

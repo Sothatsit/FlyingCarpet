@@ -9,7 +9,7 @@ public class Checks {
     public static <T> void ensureArrayNonNull(T[] array, String arrayName) {
         ensureNonNull(array, arrayName);
 
-        for(T element : array) {
+        for (T element : array) {
             ensureTrue(element != null, arrayName + " cannot contain null values");
         }
     }
@@ -19,7 +19,7 @@ public class Checks {
     }
 
     public static void ensureTrue(boolean expression, String message) {
-        if(!expression)
+        if (!expression)
             throw new IllegalArgumentException(message);
     }
 
