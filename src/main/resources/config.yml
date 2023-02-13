@@ -7,6 +7,7 @@ pass-through:
 - large_fern
 - dead_bush
 - vine
+- cave_air
 descend-speed: 5
 model:
   base:
