@@ -1,18 +1,18 @@
 package me.sothatsit.flyingcarpet.model;
 
+import me.sothatsit.flyingcarpet.FlyingCarpet;
+import me.sothatsit.flyingcarpet.util.Checks;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import me.sothatsit.flyingcarpet.FlyingCarpet;
-import me.sothatsit.flyingcarpet.util.Checks;
-
-import org.bukkit.configuration.ConfigurationSection;
-
 public class Model {
-    
-    private final ModelElement[] elements;
+
     public final Region region;
+    private final ModelElement[] elements;
 
     public Model(List<ModelElement> elements) {
         Checks.ensureNonNull(elements, "elements");
@@ -21,30 +21,18 @@ public class Model {
 
         List<Region> regions = new ArrayList<>(elements.size());
 
-        for(ModelElement element : elements) {
+        for (ModelElement element : elements) {
             regions.add(element.region);
         }
 
         this.region = Region.combine(regions);
     }
-    
-    public BlockData getBlockData(BlockOffset offset) {
-        if(!region.inBounds(offset))
-            return BlockData.AIR;
-
-        for(int index = elements.length - 1; index >= 0; --index) {
-            if(elements[index].inBounds(offset))
-                return elements[index].blockData;
-        }
-        
-        return BlockData.AIR;
-    }
 
     public static BlockData getBlockData(List<Model> models, BlockOffset offset) {
-        for(int index = models.size() - 1; index >= 0; --index) {
+        for (int index = models.size() - 1; index >= 0; --index) {
             BlockData data = models.get(index).getBlockData(offset);
 
-            if(!data.isAir())
+            if (!data.isAir())
                 return data;
         }
 
@@ -53,28 +41,37 @@ public class Model {
 
     public static Model fromConfig(ConfigurationSection config, AtomicBoolean requiresSave) {
         List<ModelElement> elements = new ArrayList<>();
-        
+
         for (String key : config.getKeys(false)) {
             if (!config.isConfigurationSection(key))
                 continue;
-            
+
+
             ConfigurationSection section = config.getConfigurationSection(key);
             ModelElement element = loadModelElement(section, requiresSave);
 
-            if(element == null)
+            if (element == null)
                 continue;
 
             elements.add(element);
         }
-        
+
         return new Model(elements);
+    }
+
+    public static Model fromTypeAndSize(String material, int x, int y, int z) {
+        ConfigurationSection section = new YamlConfiguration();
+        section.set(material.toLowerCase() + ".block-type", material.toLowerCase());
+        section.set(material.toLowerCase() + ".from", -x + ", " + y + ", " + -z);
+        section.set(material.toLowerCase() + ".to", x + ", " + y + ", " + z);
+        return fromConfig(section, new AtomicBoolean(false));
     }
 
     private static void migrateModelElement(ConfigurationSection section) {
         String modelType = section.getString("model-type");
 
-        if(modelType.equalsIgnoreCase("block")) {
-            if(!section.isConfigurationSection("offset")) {
+        if (modelType.equalsIgnoreCase("block")) {
+            if (!section.isConfigurationSection("offset")) {
                 FlyingCarpet.warning("Unable to find offset while migrating " + section.getCurrentPath());
                 return;
             }
@@ -92,7 +89,7 @@ public class Model {
             return;
         }
 
-        if(modelType.equalsIgnoreCase("cuboid")) {
+        if (modelType.equalsIgnoreCase("cuboid")) {
             if (!section.isConfigurationSection("from")) {
                 FlyingCarpet.warning("Unable to find from while migrating " + section.getCurrentPath());
                 return;
@@ -121,7 +118,7 @@ public class Model {
     }
 
     public static ModelElement loadModelElement(ConfigurationSection section, AtomicBoolean requiresSave) {
-        if(section.isSet("model-type")) {
+        if (section.isSet("model-type")) {
             migrateModelElement(section);
             requiresSave.set(true);
 
@@ -130,13 +127,13 @@ public class Model {
 
         BlockData data = BlockData.fromSection(section, requiresSave);
 
-        if(data == null)
+        if (data == null)
             return null;
 
-        if(section.isSet("at")) {
+        if (section.isSet("at")) {
             BlockOffset at = BlockOffset.fromString(section.getString("at"));
 
-            if(at == null) {
+            if (at == null) {
                 FlyingCarpet.severe("Unable to parse location for " + section.getCurrentPath() + ", invalid format");
                 return null;
             }
@@ -144,7 +141,7 @@ public class Model {
             return new ModelElement(data, new Region(at));
         }
 
-        if(section.isSet("from") && section.isSet("to")) {
+        if (section.isSet("from") && section.isSet("to")) {
             BlockOffset from = BlockOffset.fromString(section.getString("from"));
             BlockOffset to = BlockOffset.fromString(section.getString("to"));
 
@@ -157,9 +154,20 @@ public class Model {
         }
 
         FlyingCarpet.getInstance().getLogger().warning("Invalid model element " + section.getCurrentPath()
-                                                       + ", expected to find an at location or a from and to location");
+                + ", expected to find an at location or a from and to location");
 
         return null;
     }
 
+    public BlockData getBlockData(BlockOffset offset) {
+        if (!region.inBounds(offset))
+            return BlockData.AIR;
+
+        for (int index = elements.length - 1; index >= 0; --index) {
+            if (elements[index].inBounds(offset))
+                return elements[index].blockData;
+        }
+
+        return BlockData.AIR;
+    }
 }

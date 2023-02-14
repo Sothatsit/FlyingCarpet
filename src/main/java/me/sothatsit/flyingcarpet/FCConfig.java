@@ -1,8 +1,8 @@
 package me.sothatsit.flyingcarpet;
 
 import me.sothatsit.flyingcarpet.message.ConfigWrapper;
-import me.sothatsit.flyingcarpet.model.Model;
 import me.sothatsit.flyingcarpet.model.BlockData;
+import me.sothatsit.flyingcarpet.model.Model;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 
@@ -21,6 +21,26 @@ public class FCConfig {
     private int descendSpeed;
 
     private Set<String> worldguardRegionBlacklist = new HashSet<>();
+
+    private static void copySection(ConfigurationSection defaults,
+                                    ConfigurationSection config,
+                                    ConfigurationSection section,
+                                    AtomicBoolean requiresSave) {
+
+        for (String key : defaults.getKeys(true)) {
+            if (!key.startsWith(section.getCurrentPath()) || config.isSet(key))
+                continue;
+
+            if (defaults.isConfigurationSection(key)) {
+                config.createSection(key);
+                requiresSave.set(true);
+                continue;
+            }
+
+            config.set(key, defaults.get(key));
+            requiresSave.set(true);
+        }
+    }
 
     public Model getBaseModel() {
         return base;
@@ -74,6 +94,7 @@ public class FCConfig {
 
         passThrough = new HashSet<>();
         passThrough.add(BlockData.AIR);
+        passThrough.add(BlockData.CAVE_AIR);
 
         List<String> passThroughStrings = config.getStringList("pass-through");
         List<String> passThroughReformatted = new ArrayList<>(passThroughStrings);
@@ -98,7 +119,7 @@ public class FCConfig {
             }
         }
 
-        if(requiresSave.get()) {
+        if (requiresSave.get()) {
             config.set("pass-through", passThroughReformatted);
         }
 
@@ -144,41 +165,21 @@ public class FCConfig {
         tools = Model.fromConfig(toolsSec, requiresSave);
         light = Model.fromConfig(lightSec, requiresSave);
 
-        if(FlyingCarpet.isWorldGuardHooked()) {
+        if (FlyingCarpet.pluginHooks.stream().anyMatch(p -> p.hookName().equals("WorldGuard"))) {
             reloadWorldguardConfiguration(config);
         }
 
-        if(requiresSave.get()) {
+        if (requiresSave.get()) {
             configWrapper.save();
         }
     }
 
-    private static void copySection(ConfigurationSection defaults,
-                                    ConfigurationSection config,
-                                    ConfigurationSection section,
-                                    AtomicBoolean requiresSave) {
-
-        for (String key : defaults.getKeys(true)) {
-            if(!key.startsWith(section.getCurrentPath()) || config.isSet(key))
-                continue;
-
-            if (defaults.isConfigurationSection(key)) {
-                config.createSection(key);
-                requiresSave.set(true);
-                continue;
-            }
-
-            config.set(key, defaults.get(key));
-            requiresSave.set(true);
-        }
-    }
-
     public void reloadWorldguardConfiguration(ConfigurationSection config) {
-        if(!config.isSet("wg-region-blacklist") || !config.isList("wg-region-blacklist")) {
+        if (!config.isSet("wg-region-blacklist") || !config.isList("wg-region-blacklist")) {
             config.set("wg-region-blacklist", new ArrayList<>(worldguardRegionBlacklist));
         }
 
-        for(String region : config.getStringList("wg-region-blacklist")) {
+        for (String region : config.getStringList("wg-region-blacklist")) {
             worldguardRegionBlacklist.add(region.toLowerCase());
         }
 

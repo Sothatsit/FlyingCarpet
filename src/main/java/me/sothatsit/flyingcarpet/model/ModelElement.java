@@ -3,10 +3,10 @@ package me.sothatsit.flyingcarpet.model;
 import me.sothatsit.flyingcarpet.util.Checks;
 
 public class ModelElement {
-    
+
     public final BlockData blockData;
     public final Region region;
-    
+
     public ModelElement(BlockData blockData, Region region) {
         Checks.ensureNonNull(blockData, "blockData");
         Checks.ensureNonNull(region, "region");
